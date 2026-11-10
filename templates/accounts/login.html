@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Log In — ValuLens{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 28rem; margin: var(--space-12) auto; padding-inline: var(--space-4);">
+    <div class="card" style="padding: var(--space-6);">
+        <div class="card__header" style="text-align: center; margin-bottom: var(--space-6);">
+            <div style="font-size: 2rem; margin-bottom: var(--space-2);">◈</div>
+            <h1 class="card__title" style="font-size: var(--text-2xl); font-weight: 700;">Welcome Back</h1>
+            <p style="color: var(--color-text-muted); font-size: var(--text-sm); margin-top: var(--space-1);">
+                Log in to your ValuLens account
+            </p>
+        </div>
+
+        <form method="post" action="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert--error" role="alert" style="margin-bottom: var(--space-4);">
+                <span>
+                    {% for error in form.non_field_errors %}
+                        {{ error }}{% if not forloop.last %}<br>{% endif %}
+                    {% endfor %}
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}" class="form-label">
+                    {{ form.email.label }}
+                </label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <div class="form-error">
+                    {{ form.email.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}" class="form-label">
+                    {{ form.password.label }}
+                </label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <div class="form-error">
+                    {{ form.password.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: var(--space-6);">
+                <button type="submit" class="btn btn--primary btn--block btn--lg">
+                    Log In
+                </button>
+            </div>
+        </form>
+
+        <div class="card__footer" style="text-align: center; margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-border); font-size: var(--text-sm); color: var(--color-text-muted);">
+            Don't have an account?
+            <a href="{% url 'accounts:register' %}{% if next %}?next={{ next|urlencode }}{% endif %}" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">
+                Sign up
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

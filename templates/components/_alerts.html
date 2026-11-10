@@ -1,0 +1,5 @@
+{# Reusable alert/message component. Usage: {% include "components/_alerts.html" with type="success" message="Done!" %} #}
+<div class="alert alert--{{ type|default:'info' }}" role="alert">
+    <span class="alert__text">{{ message }}</span>
+    <button class="alert__close" aria-label="Dismiss" onclick="this.parentElement.remove()">&times;</button>
+</div>

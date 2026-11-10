@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}ValuLens — See what it's worth{% endblock %}
+
+{% block content %}
+<section class="container" style="padding-block: var(--space-16); text-align: center;">
+    <p style="color: var(--color-primary); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: var(--text-sm); margin-bottom: var(--space-4);">
+        ValuLens
+    </p>
+    <h1 style="font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.1; margin-bottom: var(--space-4);">
+        Snap a photo.<br>See what it’s worth.
+    </h1>
+    <p style="color: var(--color-text-muted); font-size: var(--text-lg); max-width: 36rem; margin: 0 auto var(--space-8);">
+        Identify your item, estimate resale value, and generate marketplace listings — all from one scan.
+    </p>
+    <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap;">
+        <a href="/admin/" class="btn btn--primary btn--lg">Open Admin</a>
+        <a href="#how-it-works" class="btn btn--outline btn--lg">How it works</a>
+    </div>
+</section>
+
+<section id="how-it-works" class="container" style="padding-bottom: var(--space-20);">
+    <h2 style="text-align: center; font-size: var(--text-2xl); margin-bottom: var(--space-8);">How it works</h2>
+    <div style="display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));">
+        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-6);">
+            <h3 style="margin-bottom: var(--space-2);">1. Scan</h3>
+            <p style="color: var(--color-text-muted); margin: 0;">Upload a photo of your item.</p>
+        </div>
+        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-6);">
+            <h3 style="margin-bottom: var(--space-2);">2. Value</h3>
+            <p style="color: var(--color-text-muted); margin: 0;">Get a resale estimate from market data.</p>
+        </div>
+        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-6);">
+            <h3 style="margin-bottom: var(--space-2);">3. List</h3>
+            <p style="color: var(--color-text-muted); margin: 0;">Generate listings and track sales.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

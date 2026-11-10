@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Server Error — ValuLens{% endblock %}
+{% block meta_description %}Something went wrong on our end.{% endblock %}
+{% block content %}
+<div class="container error-page">
+    <div class="error-page__content">
+        <h1 class="error-page__code">500</h1>
+        <h2 class="error-page__title">Something went wrong</h2>
+        <p class="error-page__message">We're working on fixing it. Please try again later.</p>
+        <a href="/" class="btn btn--primary">Back to Home</a>
+    </div>
+</div>
+{% endblock %}

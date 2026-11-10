@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — ValuLens{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-block: var(--space-8);">
+    {# Header with User Info #}
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-8); padding-bottom: var(--space-6); border-bottom: 1px solid var(--color-border);">
+        <div>
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
+                <h1 style="font-size: var(--text-3xl); font-weight: 800; margin: 0;">
+                    Hello, {{ user.get_short_name }}
+                </h1>
+                <span class="badge badge--ai">Member</span>
+            </div>
+            <p style="color: var(--color-text-muted); font-size: var(--text-sm); margin: 0;">
+                {{ user.email }} &bull; User ID: <code style="font-size: var(--text-xs); color: var(--color-text-muted);">{{ user.public_id }}</code>
+            </p>
+        </div>
+        <div style="display: flex; gap: var(--space-3); align-items: center;">
+            <a href="{% url 'accounts:profile' %}" class="btn btn--outline btn--sm">
+                Edit Profile
+            </a>
+            <a href="{% url 'accounts:logout' %}" class="btn btn--outline btn--sm" style="color: var(--color-danger); border-color: var(--color-danger);">
+                Log Out
+            </a>
+        </div>
+    </div>
+
+    {# Metric / Quick Stat Cards #}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); margin-bottom: var(--space-8);">
+        <div class="card" style="padding: var(--space-5);">
+            <div style="color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; font-weight: 700; margin-bottom: var(--space-1);">
+                Total Scans
+            </div>
+            <div style="font-size: var(--text-3xl); font-weight: 800; color: var(--color-primary);">
+                {{ scans_count }}
+            </div>
+        </div>
+
+        <div class="card" style="padding: var(--space-5);">
+            <div style="color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; font-weight: 700; margin-bottom: var(--space-1);">
+                Account Status
+            </div>
+            <div style="font-size: var(--text-xl); font-weight: 700; color: var(--color-success); margin-top: var(--space-1);">
+                Active
+            </div>
+        </div>
+
+        <div class="card" style="padding: var(--space-5);">
+            <div style="color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; font-weight: 700; margin-bottom: var(--space-1);">
+                Member Since
+            </div>
+            <div style="font-size: var(--text-base); font-weight: 600; margin-top: var(--space-1);">
+                {{ user.date_joined|date:"M d, Y" }}
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6);">
+        {# Left column: Recent Scans #}
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                <h2 style="font-size: var(--text-xl); font-weight: 700; margin: 0;">Your Recent Scans</h2>
+            </div>
+
+            {% if recent_scans %}
+            <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                {% for scan in recent_scans %}
+                <div class="card" style="padding: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600; font-size: var(--text-base);">
+                            {% if scan.item %}
+                                {{ scan.item.title }}
+                            {% else %}
+                                Scan #{{ scan.public_id|stringformat:".8s" }}
+                            {% endif %}
+                        </div>
+                        <div style="color: var(--color-text-muted); font-size: var(--text-xs); margin-top: var(--space-1);">
+                            Created {{ scan.created_at|timesince }} ago
+                        </div>
+                    </div>
+                    <div>
+                        {% if scan.status == "completed" %}
+                        <span class="badge badge--market">{{ scan.status }}</span>
+                        {% elif scan.status == "failed" %}
+                        <span class="badge badge--unverified">{{ scan.status }}</span>
+                        {% else %}
+                        <span class="badge badge--estimate">{{ scan.status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card" style="padding: var(--space-8); text-align: center;">
+                <p style="color: var(--color-text-muted); margin-bottom: var(--space-4);">
+                    You haven't scanned any items yet.
+                </p>
+                <a href="/" class="btn btn--primary btn--sm">
+                    Back to Home
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Right column: Security / Activity Log #}
+        <div>
+            <div style="margin-bottom: var(--space-4);">
+                <h2 style="font-size: var(--text-xl); font-weight: 700; margin: 0;">Recent Activity</h2>
+            </div>
+
+            <div class="card" style="padding: var(--space-4);">
+                {% if recent_events %}
+                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-3);">
+                    {% for event in recent_events %}
+                    <li style="font-size: var(--text-sm); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2);">
+                        <div style="font-weight: 600; color: var(--color-text);">
+                            {{ event.action }}
+                        </div>
+                        <div style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px;">
+                            {{ event.created_at|date:"M d, Y H:i" }}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color: var(--color-text-muted); font-size: var(--text-sm); margin: 0;">
+                    No recent activity recorded.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

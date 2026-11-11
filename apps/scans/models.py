@@ -8,6 +8,7 @@ Covers the full scan lifecycle: upload → processing → identification.
 """
 
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -154,6 +155,7 @@ class IdentifiedItem(models.Model):
         GOOD = "good", "Good"
         FAIR = "fair", "Fair"
         POOR = "poor", "Poor"
+        UNKNOWN = "unknown", "Unknown"
 
     scan = models.OneToOneField(
         Scan,
@@ -224,6 +226,16 @@ class IdentifiedItem(models.Model):
                 condition=models.Q(confidence__gte=0, confidence__lte=1),
             ),
         ]
+
+    @property
+    def is_mock(self):
+        """True when produced by a MOCK provider (no real recognition)."""
+        return self.provider_name.upper().startswith("MOCK")
+
+    @property
+    def is_low_confidence(self):
+        """True when confidence is below RECOGNITION_LOW_CONFIDENCE_THRESHOLD."""
+        return Decimal(self.confidence) < settings.RECOGNITION_LOW_CONFIDENCE_THRESHOLD
 
     def __str__(self):
         brand_str = f"{self.brand.name} " if self.brand else ""

@@ -12,8 +12,10 @@ import logging
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.utils.text import slugify
 
+from apps.accounts.services import record_audit_event
 from apps.catalog.models import Brand, Category
 from apps.scans.models import IdentifiedItem
 
@@ -140,3 +142,41 @@ def build_identified_item(scan, provider: RecognitionProvider, result: Recogniti
         provider_name=provider.name,
         is_user_corrected=False,
     )
+
+
+CORRECTABLE_FIELDS = ("title", "category", "brand", "model_name", "condition")
+
+
+def correct_identified_item(item: IdentifiedItem, changes: dict, actor=None) -> IdentifiedItem:
+    """
+    Apply a user correction. The provider's original prediction is kept in
+    attributes["provider_original"] the first time an item is corrected, so
+    model-generated and manual values stay distinguishable.
+    """
+    with transaction.atomic():
+        locked = IdentifiedItem.objects.select_for_update().get(pk=item.pk)
+        if not locked.is_user_corrected:
+            locked.attributes = {
+                **locked.attributes,
+                "provider_original": {
+                    "title": locked.title,
+                    "category": locked.category.slug,
+                    "brand": locked.brand.name if locked.brand else None,
+                    "model_name": locked.model_name,
+                    "condition": locked.condition,
+                    "confidence": str(locked.confidence),
+                },
+            }
+        for field in CORRECTABLE_FIELDS:
+            if field in changes:
+                setattr(locked, field, changes[field])
+        locked.is_user_corrected = True
+        locked.save()
+        record_audit_event(
+            action="identified_item.corrected",
+            target_type="Scan",
+            target_id=str(locked.scan.public_id),
+            actor=actor,
+            metadata={"fields": sorted(f for f in CORRECTABLE_FIELDS if f in changes)},
+        )
+    return locked

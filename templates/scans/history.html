@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Scan history — ValuLens{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 48rem; margin: var(--space-8) auto; padding-inline: var(--space-4);">
+    <div class="flex items-center justify-between gap-3 mb-6">
+        <h1 style="font-size: var(--text-2xl); font-weight: 800; margin: 0;">Scan history</h1>
+        <a href="{% url 'scans:upload' %}" class="btn btn--primary btn--sm">New scan</a>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <div class="alert alert--info mb-4" role="note">
+        <span>Showing scans from this browser session. Guest scans are deleted after {{ retention_hours }} hours.</span>
+    </div>
+    {% endif %}
+
+    {% if scans %}
+    <div class="flex flex-col gap-3">
+        {% for scan in scans %}
+        <a href="{% url 'scans:detail' public_id=scan.public_id %}" class="card card--interactive" style="padding: var(--space-4); display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
+            <div>
+                <div class="font-bold">
+                    {% if scan.identified_item %}{{ scan.identified_item.title }}{% else %}Scan {{ scan.public_id|stringformat:".8s" }}{% endif %}
+                </div>
+                <div class="text-muted text-xs mt-2">{{ scan.created_at|date:"M d, Y H:i" }} UTC</div>
+            </div>
+            <div class="flex gap-2 items-center">
+                {% if scan.identified_item.is_mock %}<span class="badge badge--mock">MOCK</span>{% endif %}
+                {% if scan.status == "completed" %}
+                <span class="badge badge--market">{{ scan.get_status_display }}</span>
+                {% elif scan.status == "failed" %}
+                <span class="badge badge--unverified">{{ scan.get_status_display }}</span>
+                {% else %}
+                <span class="badge badge--status">{{ scan.get_status_display }}</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% include "components/_pagination.html" %}
+    {% else %}
+    <div class="card" style="padding: var(--space-8); text-align: center;">
+        <p class="text-muted mb-4">No scans yet.</p>
+        <a href="{% url 'scans:upload' %}" class="btn btn--primary btn--sm">Scan your first item</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

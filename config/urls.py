@@ -17,6 +17,7 @@ urlpatterns = [
 
     # App URLs (to be added in subsequent phases)
     path("accounts/", include("apps.accounts.urls")),
+    path("scan/", include("apps.scans.urls")),
 
     # API (to be added in Phase 10)
     # path("api/v1/", include("config.api_urls")),

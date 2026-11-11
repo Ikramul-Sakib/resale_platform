@@ -7,6 +7,7 @@ the item and transitioning the scan is done by apps.scans.services so both
 writes happen in one transaction.
 """
 
+import json
 import logging
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
@@ -122,6 +123,10 @@ def build_identified_item(scan, provider: RecognitionProvider, result: Recogniti
 
     if provider.is_mock:
         attributes["mock"] = True
+    try:
+        json.dumps(attributes)
+    except (TypeError, ValueError) as exc:
+        raise ProviderError("provider attributes are not JSON-serialisable") from exc
 
     return IdentifiedItem(
         scan=scan,

@@ -252,6 +252,7 @@ class TestBuildIdentifiedItem(TestCase):
             RecognitionResult(title="X", confidence=float("nan")),
             RecognitionResult(title="X", confidence="abc"),
             RecognitionResult(title="   ", confidence=0.5),
+            RecognitionResult(title="X", confidence=0.5, attributes={"weight": Decimal("1.2")}),
         ):
             with self.subTest(result=bad), self.assertRaises(ProviderError):
                 recognition_services.build_identified_item(self.scan, StubProvider(), bad)
@@ -328,6 +329,14 @@ class TestCreateScan(TempMediaMixin, TestCase):
         self.assertEqual(Scan.objects.count(), 0)
         self.assertEqual(ScanImage.objects.count(), 0)
         self.assertEqual(default_storage.listdir(""), ([], []))
+
+    def test_enqueue_failure_after_commit_keeps_scan_and_file(self):
+        with mock.patch.object(scan_services, "enqueue_scan", side_effect=ConnectionError("broker down")):
+            with self.assertLogs("django", level="ERROR"):
+                with self.captureOnCommitCallbacks(execute=True):
+                    scan = scan_services.create_scan(upload(make_image_bytes()), user=self.user)
+        self.assertEqual(Scan.objects.get().status, Scan.Status.PENDING)
+        self.assertTrue(default_storage.exists(scan.images.get().storage_key))
 
     def test_stored_file_removed_if_db_write_fails(self):
         with mock.patch.object(ScanImage.objects, "create", side_effect=RuntimeError("db down")):
@@ -475,6 +484,14 @@ class TestProcessScanTask(TempMediaMixin, TestCase):
 
     def test_unexpected_exception_fails_with_generic_message(self):
         with mock.patch.object(MockRecognitionProvider, "recognize", side_effect=KeyError("internal")):
+            with self.assertLogs("apps.scans.tasks", level="ERROR"):
+                self.run_task()
+        self.scan.refresh_from_db()
+        self.assertEqual(self.scan.status, Scan.Status.FAILED)
+        self.assertEqual(self.scan.error_message, scan_services.GENERIC_FAILURE_MESSAGE)
+
+    def test_persistence_error_fails_scan_instead_of_leaving_it_processing(self):
+        with mock.patch.object(scan_services, "complete_scan", side_effect=RuntimeError("db error")):
             with self.assertLogs("apps.scans.tasks", level="ERROR"):
                 self.run_task()
         self.scan.refresh_from_db()

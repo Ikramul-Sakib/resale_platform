@@ -76,7 +76,14 @@ def process_scan(self, scan_id: int) -> str | None:
             logger.exception("scan.failed scan=%s error=unexpected", scan.public_id)
             return scan_services.fail_scan(scan, scan_services.GENERIC_FAILURE_MESSAGE).status
 
-    completed = scan_services.complete_scan(scan, item)
+    try:
+        completed = scan_services.complete_scan(scan, item)
+    except scan_services.InvalidScanTransition:
+        logger.warning("scan.skip scan=%s reason=already_terminal", scan.public_id)
+        return None
+    except Exception:
+        logger.exception("scan.failed scan=%s error=persist", scan.public_id)
+        return scan_services.fail_scan(scan, scan_services.GENERIC_FAILURE_MESSAGE).status
     logger.info(
         "scan.completed scan=%s provider=%s confidence=%s",
         completed.public_id, recognition_services.provider_log_label(provider), item.confidence,

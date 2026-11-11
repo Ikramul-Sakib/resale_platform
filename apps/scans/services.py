@@ -95,7 +95,7 @@ def create_scan(uploaded_file, *, user=None, session_key: str = "") -> Scan:
                 actor=None if is_guest else user,
                 metadata={"guest": is_guest, "content_type": image.content_type, "file_size": image.size},
             )
-            transaction.on_commit(lambda: enqueue_scan(scan.pk))
+            transaction.on_commit(lambda: enqueue_scan(scan.pk), robust=True)
     except Exception:
         default_storage.delete(storage_key)
         raise

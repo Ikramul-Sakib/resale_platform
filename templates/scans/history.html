@@ -27,6 +27,7 @@
             </div>
             <div class="flex gap-2 items-center">
                 {% if scan.identified_item.is_mock %}<span class="badge badge--mock">MOCK</span>{% endif %}
+                {% if scan.identified_item.is_user_corrected %}<span class="badge badge--manual">Corrected</span>{% endif %}
                 {% if scan.status == "completed" %}
                 <span class="badge badge--market">{{ scan.get_status_display }}</span>
                 {% elif scan.status == "failed" %}

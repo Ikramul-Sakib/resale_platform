@@ -8,6 +8,7 @@ import io
 import secrets
 import shutil
 import tempfile
+import threading
 from datetime import timedelta
 from decimal import Decimal
 from unittest import mock
@@ -17,7 +18,8 @@ from django.core.cache import cache
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import RequestFactory, TestCase, override_settings
+from django.db import connection, transaction
+from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -296,6 +298,15 @@ class TestCorrection(ScanUITestCase):
         self.assertTrue(AuditEvent.objects.filter(action="identified_item.corrected", actor=self.owner).exists())
         self.assertContains(self.client.get(response.url), "Corrected by you")
 
+    def test_corrected_mock_scan_keeps_provenance_labels_in_lists(self):
+        self.client.post(self.url, self.payload())
+        for url in (reverse("accounts:dashboard"), reverse("scans:history")):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(response, "Acme Runner")
+                self.assertContains(response, '<span class="badge badge--mock">MOCK</span>', html=True)
+                self.assertContains(response, '<span class="badge badge--manual">Corrected</span>', html=True)
+
     def test_second_correction_preserves_first_original(self):
         self.client.post(self.url, self.payload("First"))
         self.client.post(self.url, self.payload("Second"))
@@ -386,3 +397,40 @@ class TestPurge(ScanUITestCase):
             self.owner.delete()
         self.assertFalse(ScanImage.objects.exists())
         self.assertFalse(default_storage.exists(key))
+
+
+@override_settings(GUEST_SCAN_RETENTION_HOURS=24)
+class TestPurgeClaimRace(TransactionTestCase):
+    """Purge must not delete a scan whose row is locked by a concurrent claim."""
+
+    def test_purge_skips_scan_locked_by_in_flight_claim(self):
+        user = User.objects.create_user(email="claimer@example.com", password=PASSWORD)
+        scan = Scan.objects.create(session_key="c" * 32)
+        Scan.objects.filter(pk=scan.pk).update(created_at=timezone.now() - timedelta(hours=48))
+
+        locked, release, done = threading.Event(), threading.Event(), threading.Event()
+
+        def claim_in_other_connection():
+            try:
+                with transaction.atomic():
+                    Scan.objects.select_for_update().filter(pk=scan.pk).update(user=user, session_key="")
+                    locked.set()
+                    release.wait(timeout=10)
+            finally:
+                connection.close()
+                done.set()
+
+        worker = threading.Thread(target=claim_in_other_connection)
+        worker.start()
+        self.assertTrue(locked.wait(timeout=10))
+        try:
+            self.assertEqual(scan_services.purge_expired_guest_scans(), 0)
+        finally:
+            release.set()
+            worker.join(timeout=10)
+        self.assertTrue(done.is_set())
+
+        scan.refresh_from_db()
+        self.assertEqual(scan.user, user)
+        self.assertEqual(scan_services.purge_expired_guest_scans(), 0)
+        self.assertTrue(Scan.objects.filter(pk=scan.pk).exists())

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Correct identification — ValuLens{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 32rem; margin: var(--space-12) auto; padding-inline: var(--space-4);">
+    <div class="card" style="padding: var(--space-6);">
+        <div class="card__header" style="margin-bottom: var(--space-6);">
+            <div class="flex items-center justify-between">
+                <h1 class="card__title" style="font-size: var(--text-2xl); font-weight: 700;">Correct details</h1>
+                <a href="{% url 'scans:detail' public_id=scan.public_id %}" class="btn btn--outline btn--sm">Back</a>
+            </div>
+            <p class="text-muted text-sm mt-2">
+                Your corrections are saved as manual values. The provider's original prediction{% if item.is_mock %} (MOCK){% endif %} is kept for reference.
+            </p>
+        </div>
+
+        <form method="post" action="{% url 'scans:correct' public_id=scan.public_id %}" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert--error" role="alert" style="margin-bottom: var(--space-4);">
+                <span>{% for error in form.non_field_errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</span>
+            </div>
+            {% endif %}
+
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="form-error" role="alert">{{ field.errors.0 }}</div>{% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="margin-top: var(--space-6);">
+                <button type="submit" class="btn btn--primary btn--block btn--lg">Save correction</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

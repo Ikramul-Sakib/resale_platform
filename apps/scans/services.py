@@ -149,3 +149,36 @@ def fail_scan(scan: Scan, user_message: str) -> Scan:
         locked.completed_at = timezone.now()
         locked.save(update_fields=["status", "error_message", "completed_at"])
     return locked
+
+
+RETENTION_EXEMPT_SESSION_KEYS = ("demo-seed-session",)
+
+
+def purge_expired_guest_scans(*, dry_run: bool = False, now=None) -> int:
+    """
+    Delete guest scans older than GUEST_SCAN_RETENTION_HOURS. Related images,
+    identifications and estimates cascade; stored files are removed by the
+    ScanImage post_delete signal after commit. Returns the number of scans.
+    """
+    cutoff = (now or timezone.now()) - timedelta(hours=settings.GUEST_SCAN_RETENTION_HOURS)
+    expired = Scan.objects.filter(user__isnull=True, created_at__lt=cutoff).exclude(
+        session_key__in=RETENTION_EXEMPT_SESSION_KEYS
+    )
+    if dry_run:
+        return expired.count()
+    with transaction.atomic():
+        # Row locks serialise with claim_guest_scans(): a claim in flight is
+        # skipped, and a claim arriving later waits and then finds no row.
+        locked_ids = list(expired.select_for_update(skip_locked=True).values_list("pk", flat=True))
+        if not locked_ids:
+            return 0
+        _, per_model = Scan.objects.filter(pk__in=locked_ids, user__isnull=True).delete()
+        count = per_model.get(Scan._meta.label, 0)
+        record_audit_event(
+            action="scans.purged",
+            target_type="Scan",
+            target_id="guest",
+            metadata={"count": count, "retention_hours": settings.GUEST_SCAN_RETENTION_HOURS},
+        )
+    logger.info("scans.purged count=%s", count)
+    return count

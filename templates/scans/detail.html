@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Scan {{ scan.public_id|stringformat:".8s" }} — ValuLens{% endblock %}
+
+{% block extra_css %}
+{% if in_progress %}<meta http-equiv="refresh" content="3">{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 48rem; margin: var(--space-8) auto; padding-inline: var(--space-4);">
+    <div class="flex items-center justify-between gap-3 mb-6" style="flex-wrap: wrap;">
+        <h1 style="font-size: var(--text-2xl); font-weight: 800; margin: 0;">Scan result</h1>
+        <div class="flex gap-2">
+            <a href="{% url 'scans:history' %}" class="btn btn--outline btn--sm">Scan history</a>
+            <a href="{% url 'scans:upload' %}" class="btn btn--primary btn--sm">New scan</a>
+        </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-6);">
+        <div class="card" style="padding: var(--space-4);">
+            {% if image %}
+            <img src="{% url 'scans:image' public_id=scan.public_id %}" alt="Uploaded photo for this scan" style="width: 100%; border-radius: 8px; display: block;">
+            {% else %}
+            <p class="text-muted text-sm">No image available.</p>
+            {% endif %}
+            <p class="text-muted text-xs mt-2">Uploaded {{ scan.created_at|date:"M d, Y H:i" }} UTC</p>
+        </div>
+
+        <div class="card" style="padding: var(--space-6);">
+            {% if in_progress %}
+            <div role="status" aria-live="polite">
+                <span class="badge badge--status">{{ scan.get_status_display }}</span>
+                <h2 class="text-xl font-bold mt-4">Identifying your item…</h2>
+                <p class="text-muted text-sm mt-2">This page refreshes automatically every few seconds.</p>
+            </div>
+
+            {% elif scan.status == "failed" %}
+            <div class="alert alert--error" role="alert">
+                <span>{{ scan.error_message|default:"We couldn't process this scan." }}</span>
+            </div>
+            <a href="{% url 'scans:upload' %}" class="btn btn--primary mt-4">Try another photo</a>
+
+            {% elif item %}
+            <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+                <span class="badge badge--market">Completed</span>
+                {% include "components/_badges.html" with show_mock=item.is_mock %}
+                {% if item.is_user_corrected %}<span class="badge badge--manual">Corrected by you</span>{% endif %}
+            </div>
+
+            {% if item.is_mock %}
+            <div class="alert alert--warning mt-4" role="note">
+                <span>MOCK result: no real image recognition was performed. Values below are placeholders for development.</span>
+            </div>
+            {% endif %}
+
+            <h2 class="text-xl font-bold mt-4" style="word-break: break-word;">{{ item.title }}</h2>
+            <dl class="text-sm mt-4" style="display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-4); margin: var(--space-4) 0 0;">
+                <dt class="text-muted">Category</dt><dd style="margin: 0;">{{ item.category.name }}</dd>
+                <dt class="text-muted">Brand</dt><dd style="margin: 0;">{{ item.brand.name|default:"Unknown" }}</dd>
+                <dt class="text-muted">Model</dt><dd style="margin: 0;">{{ item.model_name|default:"Unknown" }}</dd>
+                <dt class="text-muted">Condition</dt><dd style="margin: 0;">{{ item.get_condition_display }}</dd>
+                <dt class="text-muted">Provider confidence</dt>
+                <dd style="margin: 0;">{% widthratio item.confidence 1 100 %}% <span class="text-muted">({{ item.provider_name }})</span></dd>
+            </dl>
+
+            {% if item.is_low_confidence and not item.is_user_corrected %}
+            <div class="alert alert--warning mt-4" role="note">
+                <span>Low confidence. Please check and correct the details.</span>
+            </div>
+            {% endif %}
+
+            <a href="{% url 'scans:correct' public_id=scan.public_id %}" class="btn btn--outline mt-4">Correct details</a>
+
+            {% else %}
+            <p class="text-muted">No identification is available for this scan.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not scan.user %}
+    <p class="text-muted text-sm mt-6">Guest scans are deleted after {{ retention_hours }} hours. <a href="{% url 'accounts:register' %}">Sign up</a> to keep this scan.</p>
+    {% endif %}
+</div>
+{% endblock %}
